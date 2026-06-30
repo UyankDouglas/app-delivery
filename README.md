@@ -1,5 +1,7 @@
 # App Pedido — Sistema de pedidos para restaurante
 
+[![CI](https://github.com/UyankDouglas/app-delivery/actions/workflows/ci.yml/badge.svg)](https://github.com/UyankDouglas/app-delivery/actions/workflows/ci.yml)
+
 Sistema web completo de pedidos para restaurante, com três áreas (dono, cliente e
 entregador), pagamento online, regras de negócio no backend e atualizações em
 **tempo real** (status do pedido + chat).

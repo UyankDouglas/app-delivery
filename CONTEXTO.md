@@ -199,7 +199,7 @@ public/uploads/          # imagens enviadas (conteúdo ignorado pelo git; pasta 
 ### Roadmap (ideias para continuar)
 - [ ] **Pix via Mercado Pago** (a abstração `PaymentProvider` já está pronta)
 - [ ] **Storage externo** (S3/Cloudinary) implementando `StorageProvider`
-- [ ] **CI no GitHub Actions** (lint + typecheck + test + build a cada push)
+- [x] **CI no GitHub Actions** (typecheck + test + build a cada push) — `.github/workflows/ci.yml`
 - [ ] Push notifications / geolocalização do entregador no mapa
 - [ ] Realtime distribuído (Redis/Pusher) para múltiplas instâncias
 

@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancela execuções antigas do mesmo ref quando chega um novo push.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Typecheck, Testes e Build
+    runs-on: ubuntu-latest
+
+    env:
+      # Valores fictícios apenas para o build/checagens — NÃO conectam a serviços reais.
+      # (As páginas são dinâmicas e não acessam o banco durante o build.)
+      DATABASE_URL: "postgresql://user:pass@localhost:5432/app_pedido?schema=public"
+      AUTH_SECRET: "ci-secret-not-used-in-production-0000000000000000"
+      NEXT_TELEMETRY_DISABLED: "1"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Validar schema do Prisma
+        run: npx prisma validate
+
+      - name: Checagem de tipos
+        run: npm run typecheck
+
+      - name: Testes
+        run: npm run test
+
+      - name: Build de produção
+        run: npm run build
