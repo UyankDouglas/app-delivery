@@ -1,0 +1,39 @@
+# Normaliza fim de linha: o repositório guarda sempre LF.
+# Evita os avisos "LF will be replaced by CRLF" e diffs por causa de EOL no Windows.
+* text=auto eol=lf
+
+# Arquivos de código/texto explicitamente como LF
+*.ts    text eol=lf
+*.tsx   text eol=lf
+*.js    text eol=lf
+*.mjs   text eol=lf
+*.cjs   text eol=lf
+*.json  text eol=lf
+*.css   text eol=lf
+*.md    text eol=lf
+*.prisma text eol=lf
+*.yml   text eol=lf
+*.yaml  text eol=lf
+*.env   text eol=lf
+
+# Scripts específicos de plataforma mantêm seu EOL nativo
+*.sh    text eol=lf
+*.bat   text eol=crlf
+*.cmd   text eol=crlf
+*.ps1   text eol=crlf
+
+# Arquivos binários (sem normalização de EOL nem diff de texto)
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.webp  binary
+*.ico   binary
+*.svg   text eol=lf
+*.woff  binary
+*.woff2 binary
+*.ttf   binary
+*.pdf   binary
+
+# Arquivos gerados: colapsa no diff do GitHub e some das estatísticas de linguagem
+package-lock.json linguist-generated=true -diff
