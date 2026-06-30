@@ -5,6 +5,7 @@ import type { PaymentMethod } from "@prisma/client";
 import { updateRestaurantSettingsAction } from "@/server/actions/restaurant";
 import type { ActionState } from "@/server/actions/auth";
 import { FieldError, Input, Label, SubmitButton, Textarea } from "@/components/ui";
+import { ImageUpload } from "@/components/image-upload";
 import { PAYMENT_METHOD_LABEL } from "@/types";
 
 const DAYS = [
@@ -96,8 +97,8 @@ export function SettingsForm({ restaurant }: { restaurant: SettingsData }) {
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
-            <Label htmlFor="logoUrl">URL do logo</Label>
-            <Input id="logoUrl" name="logoUrl" defaultValue={restaurant.logoUrl} placeholder="https://..." />
+            <Label>Logo do restaurante</Label>
+            <ImageUpload name="logoUrl" defaultValue={restaurant.logoUrl} />
             <FieldError messages={fe.logoUrl} />
           </div>
           <div>

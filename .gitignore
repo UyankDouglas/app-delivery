@@ -37,3 +37,7 @@ next-env.d.ts
 
 # runtime/sessao (Claude Code)
 .claude/scheduled_tasks.lock
+
+# uploads de imagens (mantem a pasta, ignora o conteudo enviado)
+/public/uploads/*
+!/public/uploads/.gitkeep

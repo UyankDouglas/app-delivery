@@ -3,6 +3,14 @@ import { z } from "zod";
 // Sanitiza strings: remove espaços nas pontas. (controle removido no servidor via sanitizeText)
 const str = (max = 255) => z.string().trim().max(max);
 
+// Imagem: aceita caminho de upload local (/uploads/...) ou URL http(s) externa.
+const imageRef = z
+  .string()
+  .trim()
+  .refine((v) => v === "" || v.startsWith("/uploads/") || /^https?:\/\//i.test(v), "Imagem inválida")
+  .optional()
+  .or(z.literal(""));
+
 // --------------------------------------------------------------------------
 // Autenticação
 // --------------------------------------------------------------------------
@@ -49,7 +57,7 @@ export const openingHoursSchema = z.record(
 export const restaurantSettingsSchema = z.object({
   name: str(120).min(2, "Nome muito curto"),
   description: str(500).optional().or(z.literal("")),
-  logoUrl: z.string().trim().url("URL inválida").optional().or(z.literal("")),
+  logoUrl: imageRef,
   phone: str(20).optional().or(z.literal("")),
   street: str(160).optional().or(z.literal("")),
   number: str(20).optional().or(z.literal("")),
@@ -73,7 +81,7 @@ export type RestaurantSettingsInput = z.infer<typeof restaurantSettingsSchema>;
 export const productSchema = z.object({
   name: str(120).min(2, "Nome muito curto"),
   description: str(500).optional().or(z.literal("")),
-  imageUrl: z.string().trim().url("URL inválida").optional().or(z.literal("")),
+  imageUrl: imageRef,
   price: z.coerce.number().positive("Preço deve ser maior que zero").max(100000),
   categoryName: str(60).optional().or(z.literal("")),
   isAvailable: z.coerce.boolean().default(true),

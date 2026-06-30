@@ -22,6 +22,7 @@ import {
   Textarea,
 } from "@/components/ui";
 import { formatCurrency } from "@/lib/utils";
+import { ImageUpload } from "@/components/image-upload";
 
 export type ProductRow = {
   id: string;
@@ -88,8 +89,8 @@ function ProductForm({ product, onDone }: { product?: ProductRow; onDone: () => 
               <FieldError messages={fe.price} />
             </div>
             <div>
-              <Label htmlFor="imageUrl">URL da foto</Label>
-              <Input id="imageUrl" name="imageUrl" defaultValue={product?.imageUrl} placeholder="https://..." />
+              <Label>Foto do produto</Label>
+              <ImageUpload name="imageUrl" defaultValue={product?.imageUrl ?? ""} />
               <FieldError messages={fe.imageUrl} />
             </div>
           </div>

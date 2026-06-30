@@ -162,8 +162,19 @@ src/
 | `npm run db:seed` | Popula dados de demonstração |
 | `npm run db:studio` | Prisma Studio |
 
+## 🖼️ Upload de imagens
+Logo do restaurante e fotos de produtos podem ser **enviados por upload** (ou ainda
+colar uma URL externa). Os arquivos vão para `public/uploads/` e são servidos em
+`/uploads/*`. O upload é autenticado (apenas o dono) e valida tipo (PNG/JPG/WEBP/GIF)
+e tamanho (máx. 4 MB). A camada `src/lib/storage` é abstraída (`StorageProvider`),
+então é simples trocar o disco local por S3 / Cloudinary / Vercel Blob sem mexer na UI.
+
+> Os arquivos enviados ficam fora do controle de versão (`.gitignore`). Em deploy
+> single-instance (ex.: `next start` num servidor), o disco local funciona; para
+> múltiplas instâncias/serverless, implemente o `StorageProvider` com storage externo.
+
 ## 🧭 Possíveis evoluções
 - Pix via Mercado Pago (a abstração `PaymentProvider` já está pronta).
-- Upload de imagens (hoje usa URL).
+- Storage de imagens externo (S3/Cloudinary) implementando `StorageProvider`.
 - Push notifications e geolocalização do entregador no mapa.
 - Realtime distribuído (Redis/Pusher) para múltiplas instâncias.
