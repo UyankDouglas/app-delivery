@@ -1,0 +1,314 @@
+// =============================================================================
+// Sistema de Pedidos para Restaurante — Schema do banco (PostgreSQL)
+// =============================================================================
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ----------------------------------------------------------------------------
+// Enums
+// ----------------------------------------------------------------------------
+enum Role {
+  OWNER
+  CUSTOMER
+  DELIVERY
+}
+
+enum OrderStatus {
+  PENDING_PAYMENT // criado, aguardando confirmação de pagamento
+  PAYMENT_FAILED // pagamento recusado
+  CONFIRMED // pago (ou dinheiro), aguardando o restaurante
+  PREPARING // em preparo
+  OUT_FOR_DELIVERY // saiu para entrega
+  DELIVERED // entregue
+  CANCELLED // cancelado
+}
+
+enum PaymentProviderType {
+  STRIPE
+  CASH
+  PIX
+}
+
+enum PaymentMethod {
+  CARD
+  CASH
+  PIX
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum DeliveryStatus {
+  AVAILABLE
+  BUSY
+  OFFLINE
+}
+
+// ----------------------------------------------------------------------------
+// Usuário (autenticação + papel)
+// ----------------------------------------------------------------------------
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  phone        String?
+  passwordHash String
+  role         Role     @default(CUSTOMER)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Dono possui um restaurante (1:1)
+  restaurant Restaurant? @relation("RestaurantOwner")
+
+  // Entregador possui um perfil (1:1)
+  deliveryProfile DeliveryPerson?
+
+  addresses Address[]
+  orders    Order[]   @relation("CustomerOrders")
+  messages  Message[]
+
+  @@index([role])
+}
+
+// ----------------------------------------------------------------------------
+// Restaurante (configurado pelo dono)
+// ----------------------------------------------------------------------------
+model Restaurant {
+  id          String  @id @default(cuid())
+  ownerId     String  @unique
+  // Restrict: um dono com restaurante (e histórico de pedidos) não é apagado por
+  // cascata. Exclusão de conta deve ser tratada explicitamente (anonimização/limpeza).
+  owner       User    @relation("RestaurantOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  name        String
+  slug        String  @unique // usado na URL pública /r/[slug]
+  description String?
+  logoUrl     String?
+  phone       String?
+
+  // Endereço do restaurante
+  street       String?
+  number       String?
+  complement   String?
+  neighborhood String?
+  city         String?
+  state        String?
+  zipCode      String?
+
+  // Operação
+  openingHours        Json? // { mon: { open: "18:00", close: "23:00" }, ... }
+  deliveryFee         Decimal @default(0) @db.Decimal(10, 2)
+  avgPrepTimeMinutes  Int     @default(30)
+  paymentMethods      PaymentMethod[] @default([CARD, CASH])
+  minimumOrder        Decimal @default(0) @db.Decimal(10, 2)
+  isOpen              Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  categories      Category[]
+  products        Product[]
+  orders          Order[]
+  deliveryPeople  DeliveryPerson[]
+}
+
+// ----------------------------------------------------------------------------
+// Categoria de produtos
+// ----------------------------------------------------------------------------
+model Category {
+  id           String     @id @default(cuid())
+  restaurantId String
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  name         String
+  sortOrder    Int        @default(0)
+  products     Product[]
+
+  @@unique([restaurantId, name])
+  @@index([restaurantId])
+}
+
+// ----------------------------------------------------------------------------
+// Produto
+// ----------------------------------------------------------------------------
+model Product {
+  id           String     @id @default(cuid())
+  restaurantId String
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  categoryId   String?
+  category     Category?  @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  name        String
+  description String?
+  imageUrl    String?
+  price       Decimal  @db.Decimal(10, 2)
+  isAvailable Boolean  @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orderItems OrderItem[]
+
+  @@index([restaurantId])
+  @@index([categoryId])
+}
+
+// ----------------------------------------------------------------------------
+// Entregador (perfil ligado a um User com role DELIVERY)
+// ----------------------------------------------------------------------------
+model DeliveryPerson {
+  id           String         @id @default(cuid())
+  userId       String         @unique
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  restaurantId String
+  restaurant   Restaurant     @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  vehicle      String? // ex.: "Moto Honda CG"
+  status       DeliveryStatus @default(OFFLINE)
+  createdAt    DateTime       @default(now())
+
+  orders Order[]
+
+  @@index([restaurantId])
+}
+
+// ----------------------------------------------------------------------------
+// Endereço salvo (do cliente ou restaurante)
+// ----------------------------------------------------------------------------
+model Address {
+  id           String  @id @default(cuid())
+  userId       String?
+  user         User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label        String? // ex.: "Casa", "Trabalho"
+  recipient    String?
+  phone        String?
+  zipCode      String
+  street       String
+  number       String
+  complement   String?
+  neighborhood String
+  city         String
+  state        String
+  reference    String?
+  createdAt    DateTime @default(now())
+
+  @@index([userId])
+}
+
+// ----------------------------------------------------------------------------
+// Pedido
+// ----------------------------------------------------------------------------
+model Order {
+  id           String     @id @default(cuid())
+  code         String     @unique // número amigável (ex.: "A1B2C3")
+  restaurantId String
+  // Pedidos são histórico imutável: Restrict explícito impede apagar restaurante/cliente
+  // que tenham pedidos (consistente com a política de não deletar contas com histórico).
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Restrict)
+  customerId   String
+  customer     User       @relation("CustomerOrders", fields: [customerId], references: [id], onDelete: Restrict)
+
+  deliveryPersonId String?
+  deliveryPerson   DeliveryPerson? @relation(fields: [deliveryPersonId], references: [id], onDelete: SetNull)
+
+  status OrderStatus @default(PENDING_PAYMENT)
+
+  // Totais (calculados sempre no servidor)
+  subtotal    Decimal @db.Decimal(10, 2)
+  deliveryFee Decimal @db.Decimal(10, 2)
+  total       Decimal @db.Decimal(10, 2)
+
+  paymentMethod PaymentMethod
+
+  // Snapshot do endereço de entrega (imutável no histórico)
+  addrRecipient    String
+  addrPhone        String
+  addrZipCode      String
+  addrStreet       String
+  addrNumber       String
+  addrComplement   String?
+  addrNeighborhood String
+  addrCity         String
+  addrState        String
+  addrReference    String?
+
+  customerNote String?
+
+  createdAt    DateTime  @default(now())
+  confirmedAt  DateTime?
+  preparingAt  DateTime?
+  dispatchedAt DateTime?
+  deliveredAt  DateTime?
+  cancelledAt  DateTime?
+
+  items    OrderItem[]
+  payment  Payment?
+  messages Message[]
+
+  @@index([restaurantId, status])
+  @@index([customerId])
+  @@index([deliveryPersonId])
+}
+
+// ----------------------------------------------------------------------------
+// Item do pedido (snapshot do produto no momento da compra)
+// ----------------------------------------------------------------------------
+model OrderItem {
+  id        String   @id @default(cuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId String?
+  product   Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  name      String // snapshot do nome
+  unitPrice Decimal @db.Decimal(10, 2) // snapshot do preço
+  quantity  Int
+  lineTotal Decimal @db.Decimal(10, 2)
+  note      String?
+
+  @@index([orderId])
+}
+
+// ----------------------------------------------------------------------------
+// Pagamento (1:1 com o pedido)
+// ----------------------------------------------------------------------------
+model Payment {
+  id                String              @id @default(cuid())
+  orderId           String              @unique
+  order             Order               @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  provider          PaymentProviderType
+  method            PaymentMethod
+  status            PaymentStatus       @default(PENDING)
+  amount            Decimal             @db.Decimal(10, 2)
+  currency          String              @default("brl")
+  providerPaymentId String? // ex.: PaymentIntent id do Stripe
+  rawEvent          Json? // último evento do provedor (auditoria)
+  createdAt         DateTime            @default(now())
+  paidAt            DateTime?
+
+  @@index([providerPaymentId])
+}
+
+// ----------------------------------------------------------------------------
+// Mensagem (chat entre cliente e entregador, vinculada ao pedido)
+// ----------------------------------------------------------------------------
+model Message {
+  id         String   @id @default(cuid())
+  orderId    String
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  senderId   String
+  sender     User     @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  senderRole Role
+  body       String
+  readAt     DateTime?
+  createdAt  DateTime @default(now())
+
+  @@index([orderId, createdAt])
+}
