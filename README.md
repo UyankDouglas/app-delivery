@@ -4,6 +4,9 @@ Sistema web completo de pedidos para restaurante, com três áreas (dono, client
 entregador), pagamento online, regras de negócio no backend e atualizações em
 **tempo real** (status do pedido + chat).
 
+> 👉 **Vai retomar o projeto ou trabalhar de outra máquina?** Veja o [CONTEXTO.md](CONTEXTO.md)
+> — guia de setup do zero, decisões, convenções e próximos passos.
+
 ## ✨ Funcionalidades
 
 ### Dono do restaurante (`/owner`)
