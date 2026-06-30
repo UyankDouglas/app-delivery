@@ -34,3 +34,6 @@ next-env.d.ts
 # vscode
 .vscode/*
 !.vscode/extensions.json
+
+# runtime/sessao (Claude Code)
+.claude/scheduled_tasks.lock
